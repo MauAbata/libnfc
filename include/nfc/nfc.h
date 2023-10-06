@@ -37,28 +37,32 @@
 #  include <stdint.h>
 #  include <stdbool.h>
 
-#  ifdef _WIN32
-/* Windows platform */
-#    ifndef _WINDLL
-/* CMake compilation */
-#      ifdef nfc_EXPORTS
-#        define  NFC_EXPORT __declspec(dllexport)
-#      else
-/* nfc_EXPORTS */
-#        define  NFC_EXPORT __declspec(dllimport)
-#      endif
-/* nfc_EXPORTS */
-#    else
-/* _WINDLL */
-/* Manual makefile */
-#      define NFC_EXPORT
-#    endif
-/* _WINDLL */
-#  else
-/* _WIN32 */
-#    define NFC_EXPORT
-#  endif
-/* _WIN32 */
+#  ifndef BUILD_STATIC_LIBS
+    #  ifdef _WIN32
+    /* Windows platform */
+    #    ifndef _WINDLL
+    /* CMake compilation */
+    #      ifdef nfc_EXPORTS
+    #        define  NFC_EXPORT __declspec(dllexport)
+    #      else
+    /* nfc_EXPORTS */
+    #        define  NFC_EXPORT __declspec(dllimport)
+    #      endif
+    /* nfc_EXPORTS */
+    #    else
+    /* _WINDLL */
+    /* Manual makefile */
+    #      define NFC_EXPORT
+    #    endif
+    /* _WINDLL */
+    #  else
+    /* _WIN32 */
+    #    define NFC_EXPORT
+    #  endif
+    /* _WIN32 */
+#else
+#define NFC_EXPORT
+#endif
 
 #  include <nfc/nfc-types.h>
 
