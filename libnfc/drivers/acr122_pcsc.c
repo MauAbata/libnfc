@@ -483,6 +483,8 @@ const struct nfc_driver acr122_pcsc_driver = {
   .close                            = acr122_pcsc_close,
   .strerror                         = pn53x_strerror,
 
+  .set_device_led = NULL,
+
   .initiator_init                   = pn53x_initiator_init,
   .initiator_init_secure_element    = NULL, // No secure-element support
   .initiator_select_passive_target  = pn53x_initiator_select_passive_target,

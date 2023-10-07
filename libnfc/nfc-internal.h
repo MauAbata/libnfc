@@ -129,6 +129,8 @@ struct nfc_driver {
   void (*close)(struct nfc_device *pnd);
   const char *(*strerror)(const struct nfc_device *pnd);
 
+  int (*set_device_led)(struct nfc_device *pnd, led_status status);
+
   int (*initiator_init)(struct nfc_device *pnd);
   int (*initiator_init_secure_element)(struct nfc_device *pnd);
   int (*initiator_select_passive_target)(struct nfc_device *pnd,  const nfc_modulation nm, const uint8_t *pbtInitData, const size_t szInitData, nfc_target *pnt);

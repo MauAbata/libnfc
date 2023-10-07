@@ -217,6 +217,7 @@ static int acr122_usb_send_apdu(nfc_device *pnd,
                                 const uint8_t ins, const uint8_t p1, const uint8_t p2, const uint8_t *const data, size_t data_len, const uint8_t le,
                                 uint8_t *out, const size_t out_size);
 
+
 static int
 acr122_usb_bulk_read(struct acr122_usb_data *data, uint8_t abtRx[], const size_t szRx, const int timeout)
 {
@@ -416,15 +417,23 @@ acr122_usb_open(const nfc_context *context, const nfc_connstring connstring)
         if (0 != strcmp(dev->filename, desc.filename))
           continue;
       }
+
       // Open the USB device
       if ((data.pudh = usb_open(dev)) == NULL)
         continue;
+
       // Reset device
-      usb_reset(data.pudh);
+//      usb_reset(data.pudh);
+
+      // Set configuration (Is this only necessary on Windows?
+      usb_set_configuration(data.pudh, 1);
+
       // Retrieve end points
       acr122_usb_get_end_points(dev, &data);
+
       // Claim interface
       int res = usb_claim_interface(data.pudh, 0);
+
       if (res < 0) {
         log_put(LOG_GROUP, LOG_CATEGORY, NFC_LOG_PRIORITY_ERROR, "Unable to claim USB interface (%s)", _usb_strerror(res));
         usb_close(data.pudh);
@@ -493,6 +502,11 @@ free_mem:
 static void
 acr122_usb_close(nfc_device *pnd)
 {
+    acr122_led_state state = ACR122_LED_DEFAULT();
+    state.red = ACR122_LED_OFF;
+    state.green = ACR122_LED_OFF;
+    acr122_set_led_state(pnd, &state);
+
   acr122_usb_ack(pnd);
   pn53x_idle(pnd);
 
@@ -567,6 +581,7 @@ static int
 acr122_usb_send(nfc_device *pnd, const uint8_t *pbtData, const size_t szData, const int timeout)
 {
   int res;
+
   if ((res = acr122_build_frame_from_tama(pnd, pbtData, szData)) < 0) {
     pnd->last_error = NFC_EINVARG;
     return pnd->last_error;
@@ -576,6 +591,7 @@ acr122_usb_send(nfc_device *pnd, const uint8_t *pbtData, const size_t szData, co
     pnd->last_error = res;
     return pnd->last_error;
   }
+
   return NFC_SUCCESS;
 }
 
@@ -724,7 +740,6 @@ read:
   offset += 1;
 
   memcpy(pbtData, abtRxBuf + offset, len);
-
   return len;
 }
 
@@ -758,6 +773,47 @@ acr122_usb_send_apdu(nfc_device *pnd,
   return res;
 }
 
+int acr122_set_led_state(nfc_device *pnd, acr122_led_state *state) {
+    if (state == NULL) return 0;
+    int res = 0;
+    uint8_t  abtRxBuf[255 + sizeof(struct ccid_header)];
+
+    uint8_t state_control_byte = (
+        ACR122_STATE_TO_BITS(state->red) |
+        (ACR122_STATE_TO_BITS(state->green) << 1u)
+    );
+
+    // See ACR122 manual: "Bi-Color LED and Buzzer Control" section
+    uint8_t acr122u_get_led_state_frame[] = {
+        0x6b, // CCID
+        0x09, // lenght of frame
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // padding
+        // frame:
+        0xff, // Class
+        0x00, // INS
+        0x40, // P1: Get LED state command
+        state_control_byte,  // P2: LED state control
+        0x04, // Lc
+        state->blink_on,
+        state->blink_off,
+        state->blink_repetition,
+        state->buzzer
+    };
+
+    printf("State control byte = %02x\n", state_control_byte);
+
+    log_put (LOG_CATEGORY, NFC_LOG_PRIORITY_DEBUG, "%s", "ACR122 Get LED state");
+    if ((res = acr122_usb_bulk_write(DRIVER_DATA (pnd), (uint8_t *) acr122u_get_led_state_frame, sizeof (acr122u_get_led_state_frame), 1000)) < 0)
+        return res;
+
+    if ((res = acr122_usb_bulk_read(DRIVER_DATA (pnd), abtRxBuf, sizeof (abtRxBuf), 1000)) < 0)
+        return res;
+
+    // Actually check status.
+
+    return res;
+}
+
 int
 acr122_usb_init(nfc_device *pnd)
 {
@@ -765,31 +821,14 @@ acr122_usb_init(nfc_device *pnd)
   int i;
   uint8_t  abtRxBuf[255 + sizeof(struct ccid_header)];
 
-  /*
-  // See ACR122 manual: "Bi-Color LED and Buzzer Control" section
-  uint8_t acr122u_get_led_state_frame[] = {
-    0x6b, // CCID
-    0x09, // lenght of frame
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // padding
-    // frame:
-    0xff, // Class
-    0x00, // INS
-    0x40, // P1: Get LED state command
-    0x00, // P2: LED state control
-    0x04, // Lc
-    0x00, 0x00, 0x00, 0x00, // Blinking duration control
-  };
-
-  log_put (LOG_CATEGORY, NFC_LOG_PRIORITY_DEBUG, "%s", "ACR122 Get LED state");
-  if ((res = acr122_usb_bulk_write (DRIVER_DATA (pnd), (uint8_t *) acr122u_get_led_state_frame, sizeof (acr122u_get_led_state_frame), 1000)) < 0)
-    return res;
-
-  if ((res = acr122_usb_bulk_read (DRIVER_DATA (pnd), abtRxBuf, sizeof (abtRxBuf), 1000)) < 0)
-    return res;
-  */
-
   if ((res = pn53x_set_property_int(pnd, NP_TIMEOUT_COMMAND, 1000)) < 0)
     return res;
+
+  // Reset Blinker/Buzzer
+  acr122_led_state state = ACR122_LED_DEFAULT();
+  state.red = ACR122_LED_ON;
+  state.green = ACR122_LED_OFF;
+  acr122_set_led_state(pnd, &state);
 
   // Power On ICC
   uint8_t ccid_frame[] = {
@@ -825,6 +864,35 @@ acr122_usb_abort_command(nfc_device *pnd)
   return NFC_SUCCESS;
 }
 
+int acr122_set_led(nfc_device *pnd, led_status status) {
+    acr122_led_state state = ACR122_LED_DEFAULT();
+
+    switch (status) {
+    case LED_OFF:
+        state.red = ACR122_LED_OFF;
+        state.green = ACR122_LED_OFF;
+        break;
+
+    case LED_READY:
+        state.red = ACR122_LED_OFF;
+        state.green = ACR122_LED_ON;
+        break;
+
+    case LED_BUSY:
+        state.red = ACR122_LED_OFF;
+        state.green = ACR122_LED_ON | ACR122_LED_BLINK;
+        break;
+
+    default:
+    case LED_ERROR:
+        state.red = ACR122_LED_ON | ACR122_LED_BLINK;
+        state.green = ACR122_LED_OFF;
+        break;
+    }
+
+    return acr122_set_led_state(pnd, &state);
+}
+
 const struct pn53x_io acr122_usb_io = {
   .send       = acr122_usb_send,
   .receive    = acr122_usb_receive,
@@ -837,6 +905,8 @@ const struct nfc_driver acr122_usb_driver = {
   .open                             = acr122_usb_open,
   .close                            = acr122_usb_close,
   .strerror                         = pn53x_strerror,
+
+  .set_device_led                   = acr122_set_led,
 
   .initiator_init                   = pn53x_initiator_init,
   .initiator_init_secure_element    = NULL, // No secure-element support

@@ -1085,6 +1085,10 @@ nfc_target_receive_bytes(nfc_device *pnd, uint8_t *pbtRx, const size_t szRx, int
   HAL(target_receive_bytes, pnd, pbtRx, szRx, timeout);
 }
 
+int nfc_set_device_led(nfc_device *pnd, led_status status) {
+    HAL(set_device_led, pnd, status);
+}
+
 /** @ingroup target
  * @brief Send raw bit-frames
  * @return Returns sent bits count on success, otherwise returns libnfc's error code.

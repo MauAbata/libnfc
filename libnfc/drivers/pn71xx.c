@@ -557,7 +557,7 @@ const struct nfc_driver pn71xx_driver = {
   .open                             = pn71xx_open,
   .close                            = pn71xx_close,
   .strerror                         = NULL,
-
+    .set_device_led = NULL,
   .initiator_init                   = pn71xx_initiator_init,
   .initiator_init_secure_element    = NULL,
   .initiator_select_passive_target  = pn71xx_initiator_select_passive_target,

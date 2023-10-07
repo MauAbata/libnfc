@@ -672,7 +672,7 @@ const struct nfc_driver pn532_i2c_driver = {
   .open                             = pn532_i2c_open,
   .close                            = pn532_i2c_close,
   .strerror                         = pn53x_strerror,
-
+    .set_device_led = NULL,
   .initiator_init                   = pn53x_initiator_init,
   .initiator_init_secure_element    = pn532_initiator_init_secure_element,
   .initiator_select_passive_target  = pn53x_initiator_select_passive_target,

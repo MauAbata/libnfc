@@ -34,6 +34,40 @@
 
 #include <nfc/nfc-types.h>
 
+#define ACR122_LED_NO_CHANGE 0xFFu
+#define ACR122_LED_OFF 0x00u
+#define ACR122_LED_ON 0x01u
+#define ACR122_LED_START_ON 0x02u
+#define ACR122_LED_BLINK 0x04u
+
+#define ACR122_STATE_TO_BITS(state) ( \
+    (state == 0xFFu) ? 0x00u \
+                     : (state & ACR122_LED_ON) \
+                       | (0x04u) \
+                       | ((state & ACR122_LED_START_ON) << 0x03u) \
+                       | ((state & ACR122_LED_BLINK) << 0x04u))
+
+#define ACR122_BUZZER_OFF 0x00
+#define ACR122_BUZZER_ON_T1 0x01
+#define ACR122_BUZZER_ON_T2 0x02
+#define ACR122_BUZZER_ON_ALL 0x03
+
+typedef struct {
+    uint8_t red;
+    uint8_t green;
+    uint8_t blink_on;
+    uint8_t blink_off;
+    uint8_t blink_repetition;
+    uint8_t buzzer;
+} acr122_led_state;
+
+#define ACR122_LED_DEFAULT() { \
+    ACR122_LED_NO_CHANGE, \
+    ACR122_LED_NO_CHANGE, \
+    0x1E, 0x1E, 0x00, ACR122_BUZZER_OFF \
+}
+
 extern const struct nfc_driver acr122_usb_driver;
+int acr122_set_led_state(nfc_device *pnd, acr122_led_state *state);
 
 #endif // ! __NFC_DRIVER_ACR122_USB_H__

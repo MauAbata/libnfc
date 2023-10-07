@@ -84,6 +84,14 @@
 extern  "C" {
 #  endif                        // __cplusplus
 
+
+typedef enum {
+    LED_OFF,
+    LED_READY,
+    LED_BUSY,
+    LED_ERROR
+} led_status;
+
 /* Library initialization/deinitialization */
 NFC_EXPORT void nfc_init(nfc_context **context) ATTRIBUTE_NONNULL(1);
 NFC_EXPORT void nfc_exit(nfc_context *context) ATTRIBUTE_NONNULL(1);
@@ -95,6 +103,7 @@ NFC_EXPORT void nfc_close(nfc_device *pnd);
 NFC_EXPORT int nfc_abort_command(nfc_device *pnd);
 NFC_EXPORT size_t nfc_list_devices(nfc_context *context, nfc_connstring connstrings[], size_t connstrings_len) ATTRIBUTE_NONNULL(1);
 NFC_EXPORT int nfc_idle(nfc_device *pnd);
+NFC_EXPORT int nfc_set_device_led(nfc_device *pnd, led_status status);
 
 /* NFC initiator: act as "reader" */
 NFC_EXPORT int nfc_initiator_init(nfc_device *pnd);
