@@ -800,8 +800,6 @@ int acr122_set_led_state(nfc_device *pnd, acr122_led_state *state) {
         state->buzzer
     };
 
-    printf("State control byte = %02x\n", state_control_byte);
-
     log_put (LOG_CATEGORY, NFC_LOG_PRIORITY_DEBUG, "%s", "ACR122 Get LED state");
     if ((res = acr122_usb_bulk_write(DRIVER_DATA (pnd), (uint8_t *) acr122u_get_led_state_frame, sizeof (acr122u_get_led_state_frame), 1000)) < 0)
         return res;
